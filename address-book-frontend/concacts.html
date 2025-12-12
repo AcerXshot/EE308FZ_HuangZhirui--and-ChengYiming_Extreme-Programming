@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>极限编程通讯录</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+
+  <style>
+    :root { --pico-background-color: #11191f; }
+
+    /* 顶部布局 */
+    .app-header { display: flex; justify-content: space-between; align-items: center; padding: 1rem 0; margin-bottom: 2rem; }
+    .header-actions { display: flex; gap: 0.5rem; }
+
+    /* 修复 hgroup 问题：改为自定义类 */
+    .title-group h2 { margin-bottom: 0; line-height: 1.2; }
+    .title-group small { color: #888; font-size: 0.8em; }
+
+    /* 极简图标按钮 */
+    .icon-btn {
+      background: transparent !important; border: none !important;
+      padding: 0.5rem !important; width: 40px; height: 40px;
+      color: var(--pico-primary); display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+    }
+    .icon-btn svg { width: 24px; height: 24px; stroke: currentColor; stroke-width: 2; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* 收藏星星按钮 */
+    #toggle-fav-btn {
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      flex-shrink: 0;
+      cursor: pointer;
+    }
+    #toggle-fav-btn svg { width: 20px; height: 20px; stroke: currentColor; fill: none; }
+
+    /* 收藏星星样式 */
+    .star-btn { color: #555; transition: color 0.2s; border:none; background:transparent; }
+    .star-btn.active { color: #f6ad55; }
+    .star-btn.active svg { fill: #f6ad55; stroke: #f6ad55; }
+    .star-btn:hover { transform: scale(1.1); }
+
+    /* 列表项样式 */
+    .contact-item {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 1.1rem; padding: 1rem;
+      border-bottom: 1px solid var(--pico-muted-border-color);
+      cursor: pointer; transition: background-color 0.2s ease;
+    }
+    .contact-item:hover { background-color: #192229; }
+    .contact-info { flex-grow: 1; }
+
+    /* 动态表单行样式 */
+    .detail-row { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+    .detail-row select { width: 100px; margin-bottom: 0; }
+    .detail-row input { margin-bottom: 0; flex-grow: 1; }
+    .detail-row .remove-btn { width: auto; padding: 0.2rem 0.5rem; background: var(--pico-form-invalid-border-color); border: none; font-size: 0.8rem; }
+
+    /* 分组标题 */
+    .list-group-header {
+      font-size: 1rem; font-weight: bold; color: var(--pico-primary);
+      background-color: #192229; padding: 0.25rem 1rem;
+      margin-top: 0.5rem; border-radius: 4px;
+    }
+
+    /* 搜索栏容器 */
+    .search-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+    }
+
+    /* 搜索输入框 */
+    .search-wrapper input[type="search"] {
+      margin-bottom: 0;
+      height: 40px;
+      border-radius: 20px;
+    }
+
+    /* 分页栏 */
+    .pagination-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 3rem;
+      width: 100%;
+    }
+
+    /* 分页按钮 */
+    .pagination-btn {
+      padding: 0.25rem 1rem !important;
+      font-size: 0.85rem !important;
+      width: auto !important;
+      height: 32px;
+      line-height: 1;
+      background-color: transparent;
+      border: 1px solid var(--pico-primary);
+      cursor: pointer;
+    }
+
+    /* 页码文字 */
+    #page-info { color: #888; font-size: 0.9rem; }
+  </style>
+</head>
+<body style="padding-bottom: 5rem;">
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="icon-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></symbol>
+  <symbol id="icon-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></symbol>
+  <symbol id="icon-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></symbol>
+  <symbol id="icon-star" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></symbol>
+  <symbol id="icon-user" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></symbol>
+  <symbol id="icon-trash" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+</svg>
+
+<main class="container">
+
+  <header class="app-header">
+    <div class="title-group">
+      <h2>通讯录</h2>
+      <small>Extreme Programming Project</small>
+    </div>
+    <div class="header-actions">
+      <input type="file" id="import-file-input" accept=".xlsx, .xls" style="display: none;">
+
+      <button class="outline" onclick="document.getElementById('import-file-input').click()" data-tooltip="导入 Excel">
+        导入
+      </button>
+      <button class="outline" onclick="exportContacts()" data-tooltip="导出 Excel">
+        导出
+      </button>
+      <button class="icon-btn" onclick="showAddModal()" style="background: var(--pico-primary) !important; color: white; border-radius: 50%;">
+        <svg style="stroke: white;"><use href="#icon-plus"></use></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="search-wrapper">
+    <input type="search" id="search-input" name="search" placeholder="正在加载..." style="flex-grow: 1;">
+
+    <button id="toggle-fav-btn" class="outline" data-tooltip="只看收藏">
+      <svg><use href="#icon-star"></use></svg>
+    </button>
+  </div>
+
+  <div id="contacts-list" style="margin-top: 1rem;"></div>
+
+  <div class="pagination-container" id="pagination-controls">
+    <button id="prev-page" class="pagination-btn outline">上一页</button>
+    <span id="page-info">第 1 / 1 页</span>
+    <button id="next-page" class="pagination-btn outline">下一页</button>
+  </div>
+
+  <dialog id="detail-modal">
+    <article>
+      <header>
+        <h4 style="margin:0; font-size:1.1rem;">联系人详情</h4>
+        <button aria-label="Close" class="close" onclick="hideDetailModal()"></button>
+      </header>
+      <div style="text-align: center; margin-bottom: 1rem;">
+        <svg style="width: 60px; height: 60px; background: #333; padding: 10px; border-radius: 50%; fill: none; stroke: #fff;"><use href="#icon-user"></use></svg>
+        <h3 id="detail-name" style="margin-top:0.5rem;">&nbsp;</h3>
+      </div>
+      <div id="detail-content" style="margin-bottom: 2rem;"></div>
+
+      <footer>
+        <button class="outline" id="detail-edit-btn">修改</button>
+        <button class="outline contrast" id="detail-delete-btn">删除</button>
+      </footer>
+    </article>
+  </dialog>
+
+  <dialog id="add-modal">
+    <article>
+      <header>
+        <h4 style="margin:0; font-size:1.1rem;">添加新联系人</h4>
+        <button aria-label="Close" class="close" onclick="hideAddModal()"></button>
+      </header>
+      <form id="add-contact-form">
+        <label>姓名 <input type="text" id="add-name" required></label>
+
+        <label>联系方式列表</label>
+        <div id="add-details-container">
+        </div>
+        <button type="button" class="outline secondary" onclick="addDetailRow('add-details-container')" style="margin-bottom: 1rem; width: 100%; font-size: 0.9rem;">+ 添加一行 (电话/邮箱/地址)</button>
+
+        <button type="submit">保存</button>
+      </form>
+    </article>
+  </dialog>
+
+  <dialog id="edit-modal">
+    <article>
+      <header>
+        <h4 style="margin:0; font-size:1.1rem;">修改联系人</h4>
+        <button aria-label="Close" class="close" onclick="hideEditForm()"></button>
+      </header>
+      <form id="edit-contact-form">
+        <input type="hidden" id="edit-id">
+        <label>姓名 <input type="text" id="edit-name" required></label>
+
+        <label>联系方式列表</label>
+        <div id="edit-details-container">
+        </div>
+        <button type="button" class="outline secondary" onclick="addDetailRow('edit-details-container')" style="margin-bottom: 1rem; width: 100%; font-size: 0.9rem;">+ 添加一行</button>
+
+        <footer>
+          <button type="button" class="secondary" onclick="hideEditForm()">取消</button>
+          <button type="submit">保存更改</button>
+        </footer>
+      </form>
+    </article>
+  </dialog>
+
+</main>
+
+<script src="https://unpkg.com/pinyin-pro"></script>
+<script src="script.js"></script>
+
+</body>
+</html>
