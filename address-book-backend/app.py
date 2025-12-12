@@ -20,7 +20,7 @@ def get_db_connection():
 
 
 def init_database():
-    """初始化数据库，创建支持多联系方式和收藏功能的表结构"""
+    # This function ensures table creation on cold start
     conn = get_db_connection()
     cursor = conn.cursor()
 
